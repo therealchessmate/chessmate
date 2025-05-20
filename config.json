@@ -1,0 +1,5 @@
+{
+    "stockfish_path": "/path/to/stockfish",
+    "log_level": "DEBUG"
+  }
+  
