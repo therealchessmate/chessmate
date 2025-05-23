@@ -7,7 +7,7 @@ class LichessWrapper(PlatformWrapper):
     def __init__(self, platform_config: dict[str, any]) -> None:
         self._name = platform_config['name']
         self.api_url = platform_config["url"]
-        self.token = platform_config.get("token")  # optional
+        self.token = platform_config["token"]
 
     @property
     def name(self) -> str:
@@ -22,14 +22,12 @@ class LichessWrapper(PlatformWrapper):
     ) -> str:
         if number_of_games is not None and (start_dt_utc is not None or end_dt_utc is not None):
             raise ValueError("Cannot specify number_of_games with start_dt_utc or end_dt_utc")
-
-        headers = {
-            "Accept": "application/x-ndjson"
-        }
-        if self.token:
-            headers["Authorization"] = f"Bearer {self.token}"
-
+        
         url = f"https://lichess.org/api/games/user/{username}"
+        headers = {
+            "Accept": "application/x-ndjson",
+            "Authorization": f"Bearer {self.token}"
+        }
         params = {}
 
         if number_of_games is not None:
@@ -50,5 +48,5 @@ class LichessWrapper(PlatformWrapper):
                 game_data = json.loads(line.decode("utf-8"))
                 pgns.append(game_data.get("moves", ""))
 
-        return "\n\n".join(pgns)
+        return pgns
 
