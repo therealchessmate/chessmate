@@ -1,8 +1,31 @@
 from abc import ABC, abstractmethod
+from datetime import datetime
 
 class PlatformWrapper(ABC):
+    @property
     @abstractmethod
-    def run(self) -> None:
-        """Start the platform's main process."""
+    def name(self) -> str:
+        """Returns the name of the platform, e.g., 'lichess'."""
         pass
 
+from typing import Optional
+
+class PlatformWrapper(ABC):
+
+    @abstractmethod
+    def get_pgns_by_username(
+        self,
+        username: str,
+        start_dt_utc: Optional[datetime] = None,
+        end_dt_utc: Optional[datetime] = None,
+        number_of_games: Optional[int] = None
+    ):
+        """
+        Fetch PGNs for a user.
+
+        Rules:
+        - If `number_of_games` is specified, `start_dt_utc` and `end_dt_utc` must NOT be specified.
+        - If `number_of_games` is None, `start_dt_utc` and `end_dt_utc` can be used to specify a date range.
+        - If none of the optional params are specified, fetch all or use some default range.
+        """
+        pass

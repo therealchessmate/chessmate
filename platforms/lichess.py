@@ -1,54 +1,54 @@
 import requests
-from datetime import datetime
 from typing import Optional
-
+from datetime import datetime
 from platforms.platform_abc import PlatformWrapper
 
 class LichessWrapper(PlatformWrapper):
-    def __init__(self, token: Optional[str] = None):
-        """
-        :param token: Optional personal API token from lichess.org
-        """
-        self.base_url = "https://lichess.org/api"
-        self.session = requests.Session()
-        if token:
-            self.session.headers.update({
-                "Authorization": f"Bearer {token}"
-            })
+    def __init__(self, platform_config: dict[str, any]) -> None:
+        self._name = platform_config['name']
+        self.api_url = platform_config["url"]
+        self.token = platform_config.get("token")  # optional
 
-    def _to_epoch_millis(self, dt: datetime) -> int:
-        return int(dt.timestamp() * 1000)
+    @property
+    def name(self) -> str:
+        return self._name
 
-    def get_pgns_by_user(self, username: str, start_dt: datetime, end_dt: datetime) -> str:
-        """
-        Fetch PGNs of a Lichess user between two datetimes.
-
-        :param username: Lichess username
-        :param start_dt: Start datetime (UTC)
-        :param end_dt: End datetime (UTC)
-        :return: String of PGNs
-        """
-        url = f"{self.base_url}/games/user/{username}"
-
-        params = {
-            "since": self._to_epoch_millis(start_dt),
-            "until": self._to_epoch_millis(end_dt),
-            "max": 300,  # max games per request
-            "pgnInJson": False,
-            "analysed": False,
-            "moves": True,
-            "clocks": False,
-            "evals": False,
-            "opening": False
-        }
+    def get_pgns_by_username(
+        self,
+        username: str,
+        start_dt_utc: Optional[datetime] = None,
+        end_dt_utc: Optional[datetime] = None,
+        number_of_games: Optional[int] = None
+    ) -> str:
+        if number_of_games is not None and (start_dt_utc is not None or end_dt_utc is not None):
+            raise ValueError("Cannot specify number_of_games with start_dt_utc or end_dt_utc")
 
         headers = {
-            "Accept": "application/x-chess-pgn"
+            "Accept": "application/x-ndjson"
         }
+        if self.token:
+            headers["Authorization"] = f"Bearer {self.token}"
 
-        response = self.session.get(url, headers=headers, params=params, stream=True)
+        url = f"https://lichess.org/api/games/user/{username}"
+        params = {}
 
-        if response.status_code != 200:
-            raise Exception(f"Lichess API error: {response.status_code} - {response.text}")
+        if number_of_games is not None:
+            params["max"] = number_of_games
+        else:
+            if start_dt_utc:
+                params["since"] = int(start_dt_utc.timestamp() * 1000)
+            if end_dt_utc:
+                params["until"] = int(end_dt_utc.timestamp() * 1000)
 
-        return response.text
+        response = requests.get(url, headers=headers, params=params, stream=True)
+        response.raise_for_status()
+
+        pgns = []
+        for line in response.iter_lines():
+            if line:
+                import json
+                game_data = json.loads(line.decode("utf-8"))
+                pgns.append(game_data.get("moves", ""))
+
+        return "\n\n".join(pgns)
+

@@ -10,22 +10,21 @@
     {
       "name": "Lichess",
       "class": "platforms.lichess.LichessWrapper",
-      "base_url": "https://lichess.org/api",
-      "token": "your_lichess_token",
+      "url": "https://lichess.org/api",
+      "token": "lip_AvSIYMEJxODbNCVg7Liw",
       "enabled": true
     },
     {
       "name": "Chess",
       "class": "platforms.chess.ChessWrapper",
-      "base_url": "https://chess.org/api",
-      "token": "your_lichess_token",
-      "enabled": true
+      "url": "https://chess.org/api",
+      "enabled": false
     },    
     {
       "name": "Offline",
       "class": "platforms.offline.OfflineWrapper",
       "path": "data/offline_games/",
-      "enabled": true
+      "enabled": false
     }
   ]
 }
