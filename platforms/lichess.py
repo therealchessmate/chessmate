@@ -2,7 +2,9 @@ import requests
 from datetime import datetime
 from typing import Optional
 
-class LichessWrapper:
+from platforms.platform_abc import PlatformWrapper
+
+class LichessWrapper(PlatformWrapper):
     def __init__(self, token: Optional[str] = None):
         """
         :param token: Optional personal API token from lichess.org

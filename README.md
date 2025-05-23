@@ -1,0 +1,2 @@
+- add extra wrappers: ABCclass for PGNs
+- filter for time type games

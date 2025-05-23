@@ -1,4 +1,3 @@
-import psycopg2
 from typing import Any, List, Tuple
 
 class GCPostgresConnector:
