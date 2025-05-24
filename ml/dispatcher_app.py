@@ -33,9 +33,8 @@ class DispatcherApp:
         evaluated_pgns = {}
 
         platform_wrapper = self._find_platform_wrapper(platform_name)
-        pgns = platform_wrapper.get_pgns_by_username(username, start_dt_utc, end_dt_utc, number_of_games)
-
-        print(pgns)
+        player = platform_wrapper.get_player_by_username(username, start_dt_utc, end_dt_utc, number_of_games)
+        print(player)
     #     for pgn in pgns:
     #         evaluated_pgn = stockfish_wrapper.evaluate_game(pgn)
     #         evaluated_pgns[evaluated_pgn.id] = evaluated_pgn

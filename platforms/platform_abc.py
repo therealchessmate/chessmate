@@ -13,7 +13,7 @@ from typing import Optional
 class PlatformWrapper(ABC):
 
     @abstractmethod
-    def get_pgns_by_username(
+    def get_player_by_username(
         self,
         username: str,
         start_dt_utc: Optional[datetime] = None,

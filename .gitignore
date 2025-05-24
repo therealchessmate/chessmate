@@ -14,3 +14,6 @@ venv/
 
 # macOS metadata
 .DS_Store
+
+#config for secrets
+config.json

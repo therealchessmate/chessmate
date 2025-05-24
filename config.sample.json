@@ -1,0 +1,31 @@
+{
+    "run_local": true,
+    "model": {
+    },
+    "ml_data": {
+      "train_path": "data/train.csv",
+      "test_path": "data/test.csv"
+    },
+    "platforms": [
+      {
+        "name": "Lichess",
+        "class": "platforms.lichess.LichessWrapper",
+        "url": "https://lichess.org/api",
+        "token": "XXXXXXXXXXXX",
+        "enabled": true
+      },
+      {
+        "name": "Chess",
+        "class": "platforms.chess.ChessWrapper",
+        "url": "https://chess.org/api",
+        "enabled": false
+      },    
+      {
+        "name": "Offline",
+        "class": "platforms.offline.OfflineWrapper",
+        "path": "data/offline_games/",
+        "enabled": false
+      }
+    ]
+  }
+  

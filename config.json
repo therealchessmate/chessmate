@@ -11,7 +11,7 @@
       "name": "Lichess",
       "class": "platforms.lichess.LichessWrapper",
       "url": "https://lichess.org/api",
-      "token": "lip_AvSIYMEJxODbNCVg7Liw",
+      "token": "lip_oINmwShQ4BYMPuSY7Nsc",
       "enabled": true
     },
     {
