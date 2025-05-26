@@ -36,9 +36,10 @@ def analyse():
 
     try:
         df = dispatcher_app.analyse(username, platform_name, number_of_games=int(number_of_games))
-        return jsonify(df.to_dict(orient="records"))
+        return jsonify(df.to_dict(orient="records"))  # JSON expected by JS
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     print("Starting Flask server...")

@@ -1,8 +1,10 @@
-from common_objects.game import Game  # adjust import to your structure
+from common_objects.game import Game  
+import pandas as pd
 
 class Player:
     def __init__(self, username: str):
         self.username = username
+        self.ultraBullet: dict[str, Game] = {}
         self.bullet: dict[str, Game] = {}
         self.blitz: dict[str, Game] = {}
         self.rapid: dict[str, Game] = {}
@@ -26,7 +28,7 @@ class Player:
 
     def get_game_on_id(self, game_id: str) -> Game:
         """Searches all categories for a game with the given ID."""
-        for speed in ["bullet", "blitz", "rapid", "classical", "correspondence"]:
+        for speed in ["ultraBullet", "bullet", "blitz", "rapid", "classical", "correspondence"]:
             speed_dict = getattr(self, speed)
             if game_id in speed_dict:
                 return speed_dict[game_id]
@@ -38,8 +40,19 @@ class Player:
 
     def __repr__(self) -> str:
         return (f"Player(username={self.username}, "
+            f"ultraBullet={len(self.bullet)}, "
             f"bullet={len(self.bullet)}, "
             f"blitz={len(self.blitz)}, "
             f"rapid={len(self.rapid)}, "
             f"classical={len(self.classical)}, "
             f"correspondence={len(self.correspondence)})")
+
+    def get_all_games_df(self) -> pd.DataFrame:
+        all_games = []
+        for speed in ["ultraBullet", "bullet", "blitz", "rapid", "classical", "correspondence"]:
+            speed_dict = getattr(self, speed)
+            for game in speed_dict.values():
+                all_games.append(game.to_dataframe())
+        if all_games:
+            return pd.concat(all_games, ignore_index=True)
+        return pd.DataFrame()

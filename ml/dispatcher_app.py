@@ -30,17 +30,17 @@ class DispatcherApp:
             end_dt_utc: Optional[datetime] = None,
             number_of_games: Optional[int] = None
             ):
-        evaluated_pgns = {}
-
         platform_wrapper = self._find_platform_wrapper(platform_name)
-        player = platform_wrapper.get_player_by_username(username, start_dt_utc, end_dt_utc, number_of_games)
-        print(player)
+        player = platform_wrapper.get_games_by_username(username, start_dt_utc, end_dt_utc, number_of_games)
     #     for pgn in pgns:
     #         evaluated_pgn = stockfish_wrapper.evaluate_game(pgn)
     #         evaluated_pgns[evaluated_pgn.id] = evaluated_pgn
     #     clusters = cluster_analysis(evaluated_pgns)
     #     mistakes = mistake_identifier(clusters)
     #     biggest_impact_mistakes = ImpactFinder(mistakes)
+        games = player.get_all_games_df()
+        print(games)
+        return games
 
     def _find_platform_wrapper(self,
                       platform_name: str) -> PlatformWrapper:

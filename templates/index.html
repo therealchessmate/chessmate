@@ -81,12 +81,25 @@
       border: 1px solid #ddd;
       border-radius: 8px;
       padding: 20px;
-      height: 300px;
-      overflow-y: auto;
-      font-family: monospace;
+      overflow-x: auto;
+  }
+
+  table {
+      width: 100%;
+      border-collapse: collapse;
       font-size: 14px;
-      white-space: pre-wrap;
-      color: #2c3e50;
+      margin-top: 10px;
+  }
+
+  th, td {
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      text-align: left;
+  }
+
+  th {
+      background-color: #3498db;
+      color: white;
   }
 </style>
 </head>
@@ -108,34 +121,68 @@
       <button type="submit">Analyse</button>
     </form>
   </div>
-
   <h2>Result:</h2>
-  <pre id="result">Submit the form to see analysis results here...</pre>
-</div>
-
-<script>
+  <div id="result">Submit the form to see analysis results here...</div>
+  
+  <script>
   document.getElementById("analyseForm").addEventListener("submit", async (event) => {
     event.preventDefault();
-
+  
     const username = document.getElementById("username").value.trim();
     const platform_name = document.getElementById("platform_name").value.trim();
     const number_of_games = document.getElementById("number_of_games").value;
-
-    document.getElementById("result").textContent = "Loading...";
-
+  
+    document.getElementById("result").innerHTML = "Loading...";
+  
     try {
       const response = await fetch("/analyse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, platform_name, number_of_games }),
       });
-
+  
       const data = await response.json();
-      document.getElementById("result").textContent = JSON.stringify(data, null, 2);
+  
+      if (data.error) {
+        document.getElementById("result").innerHTML = "Error: " + data.error;
+        return;
+      }
+  
+      if (data.length === 0) {
+        document.getElementById("result").innerHTML = "No games found.";
+        return;
+      }
+  
+      const table = document.createElement("table");
+      table.border = "1";
+      table.style.width = "100%";
+  
+      // Header
+      const headerRow = document.createElement("tr");
+      Object.keys(data[0]).forEach(key => {
+        const th = document.createElement("th");
+        th.textContent = key;
+        headerRow.appendChild(th);
+      });
+      table.appendChild(headerRow);
+  
+      // Rows
+      data.forEach(row => {
+        const tr = document.createElement("tr");
+        Object.values(row).forEach(val => {
+          const td = document.createElement("td");
+          td.textContent = val;
+          tr.appendChild(td);
+        });
+        table.appendChild(tr);
+      });
+  
+      const result = document.getElementById("result");
+      result.innerHTML = "";
+      result.appendChild(table);
+  
     } catch (error) {
-      document.getElementById("result").textContent = "Error: " + error.message;
+      document.getElementById("result").innerHTML = "Error: " + error.message;
     }
   });
-</script>
-</body>
-</html>
+  </script>  

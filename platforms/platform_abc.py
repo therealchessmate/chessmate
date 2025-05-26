@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
+from common_objects.player import Player
 
 class PlatformWrapper(ABC):
     @property
@@ -13,13 +14,13 @@ from typing import Optional
 class PlatformWrapper(ABC):
 
     @abstractmethod
-    def get_player_by_username(
+    def get_games_by_username(
         self,
         username: str,
         start_dt_utc: Optional[datetime] = None,
         end_dt_utc: Optional[datetime] = None,
         number_of_games: Optional[int] = None
-    ):
+    ) -> Player:
         """
         Fetch PGNs for a user.
 

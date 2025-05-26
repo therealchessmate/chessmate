@@ -26,12 +26,21 @@ class Game:
 
     def to_dataframe(self) -> pd.DataFrame:
         move_count = len(self.moves)
+
+        def pad_or_trim(lst):
+            if not lst:
+                return [None] * move_count
+            elif len(lst) < move_count:
+                return lst + [None] * (move_count - len(lst))
+            else:
+                return lst[:move_count]
+
         return pd.DataFrame({
             "game_id": [self.id] * move_count,
             "move_number": list(range(1, move_count + 1)),
             "move": self.moves,
-            "evaluation": self.evaluations if self.evaluations else [None] * move_count,
-            "time_spent": self.time_spent if self.time_spent else [None] * move_count,
+            "evaluation": pad_or_trim(self.evaluations),
+            "time_spent": pad_or_trim(self.time_spent),
             "speed": [self.speed] * move_count,
             "platform": [self.platform] * move_count,
             "opening": [self.opening] * move_count,
@@ -39,6 +48,7 @@ class Game:
             "winner": [self.winner] * move_count,
             "start_dt_utc": [self.start_dt_utc] * move_count,
         })
+
 
     def __repr__(self):
         return f"<Game {self.id} [{self.speed}] {self.start_dt_utc.date()} on {self.platform}>"
