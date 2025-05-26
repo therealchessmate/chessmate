@@ -12,7 +12,7 @@ class StockfishWrapper:
         Evaluate PGN game and return (move_san, evaluation_in_centipawns)
         """
         pgn_io = StringIO(pgn_text)
-        game = chess.pgn.read_game(pgn_io)
+        game = chesscom.pgn.read_game(pgn_io)
         board = game.board()
         evaluations = []
 

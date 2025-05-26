@@ -2,27 +2,18 @@ from datetime import datetime
 import pandas as pd
 
 class Game:
-    def __init__(self,
-                 id: str,
-                 start_dt_utc: datetime,
-                 platform: str,
-                 speed: str,
-                 opening: str,
-                 status: str,
-                 winner: str,
-                 moves: list[str],
-                 evaluations: list[float] = None,
-                 time_spent: list[float] = None):
+    def __init__(self, id, start_dt_utc, platform, speed, opening, winner, moves, evaluations, time_spent, player_color):
         self.id = id
         self.start_dt_utc = start_dt_utc
         self.platform = platform
         self.speed = speed
         self.opening = opening
-        self.status = status
         self.winner = winner
         self.moves = moves
-        self.evaluations = evaluations or []
-        self.time_spent = time_spent or []
+        self.evaluations = evaluations
+        self.time_spent = time_spent
+        self.player_color = player_color  # 'white' or 'black'
+
 
     def to_dataframe(self) -> pd.DataFrame:
         move_count = len(self.moves)
@@ -44,7 +35,6 @@ class Game:
             "speed": [self.speed] * move_count,
             "platform": [self.platform] * move_count,
             "opening": [self.opening] * move_count,
-            "status": [self.status] * move_count,
             "winner": [self.winner] * move_count,
             "start_dt_utc": [self.start_dt_utc] * move_count,
         })

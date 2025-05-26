@@ -1,6 +1,6 @@
 import requests
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 from platforms.platform_abc import PlatformWrapper
 from common_objects.player import Player
@@ -34,7 +34,6 @@ class LichessWrapper(PlatformWrapper):
         url = f"https://lichess.org/api/games/user/{username}"
         headers = {
             "Accept": "application/x-ndjson",
-            "Authorization": f"Bearer {self.token}"
         }
         params = {
             "analysed": "true",
@@ -63,28 +62,45 @@ class LichessWrapper(PlatformWrapper):
                 continue
             try:
                 game_data = json.loads(line.decode("utf-8"))
-                game = self._create_game_from_data(game_data)
+
+                # Filter: only normal chess games
+                if game_data.get("variant", 'unkown') != "standard":
+                    continue
+
+                game = self._create_game_from_data(game_data, username)
                 player.add_game(game)
             except Exception as e:
                 print(f"Skipping game due to error: {e}")
         return player
 
-    def _create_game_from_data(self, game_data: dict) -> Game:
+    def _create_game_from_data(self, game_data: dict, username: str) -> Game:
         move_list = game_data.get("moves", "").split()
         evals = self._extract_evaluations(game_data, len(move_list))
         clocks = game_data.get("clocks", [])
 
+        # Determine player's color
+        white_player = game_data.get("players", {}).get("white", {}).get("user", {}).get("name", "").lower()
+        black_player = game_data.get("players", {}).get("black", {}).get("user", {}).get("name", "").lower()
+        username_lower = username.lower()
+
+        if username_lower == white_player:
+            player_color = "white"
+        elif username_lower == black_player:
+            player_color = "black"
+        else:
+            raise ValueError(f"Username {username} not found as white or black player in game {game_data.get('id')}")
+
         return Game(
             id=game_data["id"],
-            start_dt_utc=datetime.fromtimestamp(game_data["createdAt"] / 1000),
+            start_dt_utc=datetime.fromtimestamp(game_data["createdAt"] / 1000, tz=timezone.utc),
             platform=self.name,
             speed=game_data.get("speed", "unknown"),
             opening=game_data.get("opening", {}).get("name", "Unknown"),
-            status=game_data.get("status", "unknown"),
             winner=game_data.get("winner", "draw") if game_data.get("winner") else "draw",
             moves=move_list,
             evaluations=evals,
-            time_spent=clocks
+            time_spent=clocks,
+            player_color=player_color
         )
 
     def _extract_evaluations(self, game_data: dict, move_count: int) -> list[str]:

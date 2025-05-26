@@ -39,7 +39,7 @@ class DispatcherApp:
     #     mistakes = mistake_identifier(clusters)
     #     biggest_impact_mistakes = ImpactFinder(mistakes)
         games = player.get_all_games_df()
-        print(games)
+        print(player)
         return games
 
     def _find_platform_wrapper(self,

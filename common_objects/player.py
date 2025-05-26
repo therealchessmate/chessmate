@@ -12,7 +12,7 @@ class Player:
         self.correspondence: dict[str, Game] = {}
 
     def _get_speed_dict(self, speed: str) -> dict[str, Game]:
-        if speed not in {"bullet", "blitz", "rapid", "classical", "correspondence"}:
+        if speed not in {"ultraBullet","bullet", "blitz", "rapid", "classical", "correspondence"}:
             raise ValueError(f"Unknown speed: {speed}")
         return getattr(self, speed)
 
@@ -40,19 +40,17 @@ class Player:
 
     def __repr__(self) -> str:
         return (f"Player(username={self.username}, "
-            f"ultraBullet={len(self.bullet)}, "
+            f"ultraBullet={len(self.ultraBullet)}, "
             f"bullet={len(self.bullet)}, "
             f"blitz={len(self.blitz)}, "
             f"rapid={len(self.rapid)}, "
             f"classical={len(self.classical)}, "
             f"correspondence={len(self.correspondence)})")
 
-    def get_all_games_df(self) -> pd.DataFrame:
+    def get_all_games_df(self) -> list[pd.DataFrame]:
         all_games = []
         for speed in ["ultraBullet", "bullet", "blitz", "rapid", "classical", "correspondence"]:
             speed_dict = getattr(self, speed)
             for game in speed_dict.values():
                 all_games.append(game.to_dataframe())
-        if all_games:
-            return pd.concat(all_games, ignore_index=True)
-        return pd.DataFrame()
+        return all_games
