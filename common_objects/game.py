@@ -12,7 +12,7 @@ class Game:
         self.moves = moves
         self.evaluations = evaluations
         self.time_spent = time_spent
-        self.player_color = player_color  # 'white' or 'black'
+        self.player_color: str = player_color  # 'white' or 'black'
 
 
     def to_dataframe(self) -> pd.DataFrame:

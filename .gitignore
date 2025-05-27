@@ -17,3 +17,8 @@ venv/
 
 #config for secrets
 config.json
+
+# Ignore all log files
+logs/*
+# But keep the folder
+!logs/.gitkeep
