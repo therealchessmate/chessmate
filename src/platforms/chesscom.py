@@ -5,8 +5,8 @@ from typing import Optional
 from datetime import datetime, timedelta, timezone
 from dateutil.relativedelta import relativedelta
 from platforms.platform_abc import PlatformWrapper
-from common_objects.player import Player
-from common_objects.game import Game
+from common.player import Player
+from common.game import Game
 
 
 class ChessComWrapper(PlatformWrapper):
