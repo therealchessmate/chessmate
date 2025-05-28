@@ -1,11 +1,19 @@
-import os
 import subprocess
 import sys
-import yaml
 from pathlib import Path
+from ruamel.yaml import YAML
 
-CONFIG_PATH = Path("config.yaml")
+yaml = YAML()
+
 VENV_DIR = Path("venv")
+PIP = VENV_DIR / "bin" / "pip"
+PYTHON = VENV_DIR / "bin" / "python"
+
+REQUIREMENTS_DIR = Path("requirements")
+REQUIREMENTS_IN = REQUIREMENTS_DIR / "requirements.in"
+REQUIREMENTS_TXT = REQUIREMENTS_DIR / "requirements.txt"
+DEV_REQUIREMENTS_IN = REQUIREMENTS_DIR / "dev-requirements.in"
+DEV_REQUIREMENTS_TXT = REQUIREMENTS_DIR / "dev-requirements.txt"
 
 def create_venv():
     if not VENV_DIR.exists():
@@ -14,37 +22,38 @@ def create_venv():
     else:
         print("[SETUP] Virtual environment already exists.")
 
-def install_dependencies():
-    pip_path = VENV_DIR / "bin" / "pip"
-    print("[SETUP] Installing dependencies from requirements.txt...")
-    subprocess.run([str(pip_path), "install", "--upgrade", "pip", "setuptools", "wheel"], check=True)
-    subprocess.run([str(pip_path), "install", "-r", "requirements.txt"], check=True)
+def install_pip_tools():
+    print("[SETUP] Installing pip-tools...")
+    subprocess.run([str(PIP), "install", "--upgrade", "pip", "setuptools", "wheel", "pip-tools"], check=True)
 
-def update_config_flag():
-    with open(CONFIG_PATH, "r") as f:
-        config = yaml.safe_load(f)
+def compile_requirements():
+    print("[SETUP] Compiling user and dev requirements...")
+    subprocess.run([str(PYTHON), "-m", "piptools", "compile", str(REQUIREMENTS_IN)], check=True)
+    subprocess.run([str(PYTHON), "-m", "piptools", "compile", str(DEV_REQUIREMENTS_IN)], check=True)
 
+def install_dependencies(config):
+    print("[SETUP] Installing user dependencies...")
+    subprocess.run([str(PIP), "install", "-r", str(REQUIREMENTS_TXT)], check=True)
+
+    if config.get("install_dev_dependencies", False):
+        print("[SETUP] Installing dev dependencies...")
+        subprocess.run([str(PIP), "install", "-r", str(DEV_REQUIREMENTS_TXT)], check=True)
+    else:
+        print("[SETUP] Skipping dev dependencies...")
+
+def update_config_flag(config, config_path):
     config["first_time_setup"] = False
-
-    with open(CONFIG_PATH, "w") as f:
-        yaml.safe_dump(config, f)
-
+    with open(config_path, "w") as f:
+        yaml.dump(config, f)
     print("[SETUP] Config updated: first_time_setup = false")
 
-def is_first_time_setup():
-    if not CONFIG_PATH.exists():
-        raise FileNotFoundError("Missing config.yaml")
-
-    with open(CONFIG_PATH, "r") as f:
-        config = yaml.safe_load(f)
-
-    return config.get("first_time_setup", False)
-
-def run():
-    if is_first_time_setup():
+def run(config, config_path):
+    if config.get("first_time_setup", False):
         create_venv()
-        install_dependencies()
-        update_config_flag()
+        install_pip_tools()
+        compile_requirements()
+        install_dependencies(config)
+        update_config_flag(config, config_path)
         print("[SETUP] Environment setup complete.")
     else:
         print("[SETUP] Skipping setup: already completed.")

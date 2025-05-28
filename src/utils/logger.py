@@ -1,10 +1,5 @@
-# utils/logger.py
-
 import logging
 import os
-import json
-from data.helper_functions import load_config
-
 
 def setup_logger(log_path):
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
@@ -19,10 +14,4 @@ def setup_logger(log_path):
         ))
         logger.addHandler(file_handler)
 
-    return logger
 
-config = load_config()
-
-
-log_path = config["paths"]["logs"]
-logger = setup_logger(log_path)

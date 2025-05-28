@@ -5,12 +5,14 @@
 
 # Virtual environment
 venv/
+*.pyc
 
 # Environment variables / credentials
 .env
 
 # VSCode settings
 .vscode/
+requirements.txt
 
 # macOS metadata
 .DS_Store
