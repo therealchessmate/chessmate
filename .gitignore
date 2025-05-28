@@ -16,9 +16,12 @@ venv/
 .DS_Store
 
 #config for secrets
-config.json
+config.yaml
 
-# Ignore all log files
+# Ignore all log files but keep the folder
 logs/*
-# But keep the folder
 !logs/.gitkeep
+
+# Ignore Stockfish binary files inside these folders
+stockfish_bin/official_stockfish
+stockfish_bin/patched_stockfish

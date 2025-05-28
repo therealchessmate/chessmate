@@ -1,4 +1,4 @@
-from common_objects.game import Game  
+from common.game import Game  
 import pandas as pd
 
 class Player:

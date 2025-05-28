@@ -3,6 +3,8 @@
 import logging
 import os
 import json
+from data.helper_functions import load_config
+
 
 def setup_logger(log_path):
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
@@ -19,9 +21,8 @@ def setup_logger(log_path):
 
     return logger
 
-# Load path from config
-with open("config.json") as f:
-    config = json.load(f)
+config = load_config()
+
 
 log_path = config["paths"]["logs"]
 logger = setup_logger(log_path)

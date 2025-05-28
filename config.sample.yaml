@@ -1,0 +1,37 @@
+run_local: true
+
+force_rebuild:
+  official_stockfish: false
+  patched_stockfish: false
+
+model: {}
+
+ml_data:
+  train_path: data/train.csv
+  test_path: data/test.csv
+
+platforms:
+  - name: Lichess
+    class: platforms.lichess.LichessWrapper
+    url: https://lichess.org/api
+    token: XXXXXXXXXXXX
+    enabled: true
+  - name: ChessCom
+    class: platforms.chesscom.ChessComWrapper
+    url: https://api.chess.com/pub
+    token: XXXXXXXXXXXX
+    enabled: true
+  - name: Offline
+    class: platforms.offline.OfflineWrapper
+    path: data/offline_games/
+    enabled: false
+
+stockfish_repos:
+  official_path: ../official_stockfish
+  official_url: https://github.com/official-stockfish/Stockfish.git
+  patched_path: ../patched_stockfish
+  patched_url: https://github.com/therealchessmate/PatchedStockfish.git
+
+paths:
+  stockfish: stockfish_bin
+  logs: logs/engine.log

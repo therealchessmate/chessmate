@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from common_objects.player import Player
+from common.player import Player
 
 class PlatformWrapper(ABC):
     @property
