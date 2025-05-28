@@ -1,8 +1,8 @@
 from pathlib import Path
 
 from data.helper_functions import load_config
-from setup_env import run as run_setup_env
-from engines.setup_stockfish import run as run_setup_stockfish  
+from setup.setup_env import run as run_setup_env
+from setup.setup_stockfish import run as run_setup_stockfish  
 from ml.dispatcher_app import DispatcherApp
 from utils.logger import setup_logger
 

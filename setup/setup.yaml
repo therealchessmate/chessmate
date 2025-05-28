@@ -1,0 +1,14 @@
+run_local: true
+install_dev_dependencies: true
+force_rebuild:
+  official_stockfish: false
+  patched_stockfish: false
+paths:
+  logs: logs/engine.log
+  stockfish: stockfish_bin
+stockfish_repos:
+  official_path: ../official_stockfish
+  official_url: https://github.com/official-stockfish/Stockfish.git
+  patched_path: ../patched_stockfish
+  patched_url: https://github.com/therealchessmate/PatchedStockfish.git
+first_time_setup: false

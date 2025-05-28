@@ -4,7 +4,7 @@ import shutil
 import platform
 import logging
 
-logger = logging.getLogger("chessmate")
+logger = logging.getLogger("setup")
 
 def clone_repo_if_missing(repo_url: str, local_path: str):
     if os.path.exists(local_path):
