@@ -22,6 +22,7 @@ config.yaml
 
 # Ignore all log files but keep the folder
 logs/*
+*.log
 !logs/.gitkeep
 
 # Ignore Stockfish binary files inside these folders
