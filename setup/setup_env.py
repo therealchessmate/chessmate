@@ -47,13 +47,10 @@ def install_dependencies(config):
         print("[SETUP] Skipping dev dependencies installation.")
 
 def run(config, config_path):
-    if config.get("first_time_setup", True):
-        create_venv()
-        install_pip_tools()
-        compile_requirements()
-        install_dependencies(config)
-        config["first_time_setup"] = False
-        save_config(config, config_path)
-        print("[SETUP] Environment setup complete.")
-    else:
-        print("[SETUP] Setup already completed, skipping.")
+    create_venv()
+    install_pip_tools()
+    compile_requirements()
+    install_dependencies(config)
+    config["first_time_setup"] = False
+    save_config(config, config_path)
+    print("[SETUP] Environment setup complete.")
