@@ -1,70 +1,51 @@
-import subprocess
 import sys
+import subprocess
 from pathlib import Path
-from logger import get_logger
 
-SETUP_DIR = Path(__file__).parent
-CONFIG_PATH = SETUP_DIR / "setup.yaml"
-VENV_DIR = Path("venv")
-PYTHON = VENV_DIR / "bin" / "python"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+VENV_DIR = PROJECT_ROOT / ".venv"
 
-# Basic logger setup for this setup_driver
-logger = get_logger("setup")
+def running_inside_venv():
+    return Path(sys.prefix) == VENV_DIR.resolve()
 
-def ensure_pip():
-    try:
-        import pip
-    except ImportError:
-        logger.info("pip not found. Installing...")
-        subprocess.run([sys.executable, "-m", "ensurepip", "--upgrade"], check=True)
+def create_venv():
+    print("[INFO] Creating virtual environment...")
+    subprocess.run([sys.executable, "-m", "venv", str(VENV_DIR)], check=True)
 
-def ensure_pyyaml():
-    try:
-        import yaml
-    except ImportError:
-        logger.info("PyYAML not found. Installing...")
-        subprocess.run([sys.executable, "-m", "pip", "install", "pyyaml"], check=True)
+def install_early_dependencies():
+    print("[INFO] Installing early dependencies (PyYAML, ruamel.yaml)...")
+    pip_executable = VENV_DIR / "bin" / "pip"
+    subprocess.run([str(pip_executable), "install", "pyyaml", "ruamel.yaml"], check=True)
 
-def ensure_ruamel():
-    try:
-        import ruamel.yaml
-    except ImportError:
-        logger.info("ruamel.yaml not found. Installing...")
-        subprocess.run([sys.executable, "-m", "pip", "install", "ruamel.yaml"], check=True)        
 
-def load_config():
+def load_config(config_path):
     import yaml
-    with open(CONFIG_PATH, "r") as f:
+    if not config_path.exists():
+        print("[WARN] setup.yaml not found, returning empty config")
+        return {}
+    with open(config_path, "r") as f:
         return yaml.safe_load(f)
 
 def main():
-    ensure_pip()
-    ensure_pyyaml()
-    ensure_ruamel()
+    config_path = Path(__file__).parent / "setup.yaml"
 
-    config = load_config()
+    if not running_inside_venv():
+        create_venv()
+        install_early_dependencies()
+        venv_python = VENV_DIR / "bin" / "python"
+        print(f"[INFO] Relaunching script inside virtual environment: {venv_python}")
+        subprocess.run([str(venv_python), *sys.argv], check=True)
+        return
 
-    # Lazy import after dependencies are ensured
-    sys.path.insert(0, str(SETUP_DIR))
-    from setup_env import run as run_setup_env
+    print("[INFO] Running inside virtual environment")
+    config = load_config(config_path)
+    print("[INFO] Loaded config:", config)
 
-    run_setup_env(config, CONFIG_PATH)
+    from setup_env import run as run_env_requirements
+    run_env_requirements(config, config_path)
 
     from setup_stockfish import run as run_setup_stockfish
     run_setup_stockfish(config)
-
-    logger.info("Done.")
-    logger.info("Activate the venv using the following command in the terminal/cmd:")
-    logger.info("  # Linux/macOS")
-    logger.info("  source venv/bin/activate")
-    logger.info("")
-    logger.info("  # Windows CMD")
-    logger.info("  venv\\Scripts\\activate.bat")
-    logger.info("")
-    logger.info("  # Windows PowerShell")
-    logger.info("  venv\\Scripts\\Activate.ps1")
-    logger.info("")
-    logger.info("You can now run `src/main.py` inside the virtual environment.")
 
 if __name__ == "__main__":
     main()

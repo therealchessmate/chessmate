@@ -19,19 +19,23 @@ def clone_repo_if_missing(repo_url: str, local_path: str):
         logger.error(f"Failed to clone repo: {e}")
         raise
 
-
 def get_stockfish_arch():
-    """
-    Detect the correct architecture string to pass to Stockfish's makefile.
-    """
-    arch = platform.machine().lower()
-    if arch == "x86_64":
-        return "x86-64"  # dash, not underscore
-    elif arch in ("arm64", "aarch64"):
-        return "armv8"  # stockfish uses armv8
-    else:
-        logger.warning(f"Unknown machine arch '{arch}', defaulting to x86-64")
-        return "x86-64"
+    system = platform.system()
+    machine = platform.machine().lower()
+
+    if system == "Darwin":  # macOS
+        if machine == "arm64":
+            return "apple-silicon"
+        elif machine == "x86_64":
+            return "x86-64-avx2"  # or "x86-64-sse41-popcnt" for portability
+    elif system == "Linux":
+        if machine == "x86_64":
+            return "x86-64-avx2"
+        elif "arm" in machine or "aarch" in machine:
+            return "armv8"
+    elif system == "Windows":
+        return "x86-64"  # Most Windows machines use x86-64
+    raise RuntimeError(f"Unsupported platform: {system} {machine}")
 
 
 def build_stockfish(source_path, arch=None, copy_to=None, force_rebuild=False):
@@ -47,7 +51,7 @@ def build_stockfish(source_path, arch=None, copy_to=None, force_rebuild=False):
     if copy_to and os.path.exists(copy_to) and not force_rebuild:
         logger.info(f"Binary already exists at {copy_to}, skipping build.")
         return
-
+    arch = get_stockfish_arch()
     if arch is None:
         arch = platform.machine()
         if arch.lower() == "armv8":
@@ -56,7 +60,7 @@ def build_stockfish(source_path, arch=None, copy_to=None, force_rebuild=False):
 
     src_path = os.path.join(source_path, "src")
     try:
-        subprocess.run(["make", f"ARCH={arch}"], cwd=src_path, check=True)
+        subprocess.run(["make", "-j", "profile-build", f"ARCH={arch}"], cwd=src_path, check=True)
         logger.info("Stockfish built successfully.")
     except subprocess.CalledProcessError as e:
         logger.error(f"Failed to build Stockfish: {e}")
