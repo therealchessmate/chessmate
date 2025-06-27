@@ -3,8 +3,8 @@ from typing import Optional
 from datetime import datetime, timezone
 import json
 from platforms.platform_abc import PlatformWrapper
-from common_objects.player import Player
-from common_objects.game import Game
+from src.common.player import Player
+from src.common.game import Game
 
 
 class LichessWrapper(PlatformWrapper):
