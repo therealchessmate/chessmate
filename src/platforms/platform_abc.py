@@ -2,17 +2,15 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from common.player import Player
 
+from typing import Optional
+
 class PlatformWrapper(ABC):
     @property
     @abstractmethod
     def name(self) -> str:
         """Returns the name of the platform, e.g., 'lichess'."""
         pass
-
-from typing import Optional
-
-class PlatformWrapper(ABC):
-
+    
     @abstractmethod
     def get_games_by_username(
         self,

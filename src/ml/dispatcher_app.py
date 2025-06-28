@@ -48,7 +48,6 @@ class DispatcherApp:
             (p for p in self.platforms if p.name == platform_name),
             None
             )
-
         if platform_wrapper is None:
             raise ValueError(f"No platform wrapper found for platform '{platform_name}'")
         
