@@ -1,123 +1,108 @@
-# engines/stockfish_wrapper.py
 from typing import List, Optional, Dict, Tuple
-from dataclasses import dataclass
+from engines.uci_engine import UCIEngine, Score
 import chess, chess.pgn
 from io import StringIO
 
-from engines.uci_engine import UCIEngine, Score
-
-@dataclass(frozen=True)
-class EvalConfig:
-    depth: int = 12
-    clear_tt: bool = True   # send 'ucinewgame' before unrelated positions
-    perspective: str = "stm"  # "stm" or "white"
-
 class StockfishWrapper:
-    """
-    Domain-level helpers on top of UCIEngine.
-    All evaluation methods share one shape and return a Score dataclass.
-    """
-
     def __init__(self, path_to_engine: str, depth: int = 12, threads: int = 1, hash_mb: int = 64):
         self.engine = UCIEngine(path_to_engine, options={"Threads": threads, "Hash": hash_mb})
         self.engine.start()
-        self.cfg = EvalConfig(depth=depth)
-        self._has_position = False
+        self.depth = depth
+        self.board: Optional[chess.Board] = None  # track current board locally
 
-    # --- lifecycle ---
-    def close(self): self.engine.stop()
-    def set_depth(self, depth: int): self.cfg = EvalConfig(depth=depth, clear_tt=self.cfg.clear_tt, perspective=self.cfg.perspective)
-    def set_threads(self, n: int): self.engine.setoption("Threads", n)
-    def set_perspective(self, mode: str):  # "stm" or "white"
-        if mode not in ("stm", "white"): raise ValueError("perspective must be 'stm' or 'white'")
-        self.cfg = EvalConfig(depth=self.cfg.depth, clear_tt=self.cfg.clear_tt, perspective=mode)
+    # ---------- position management ----------
+    def load_startpos(self, clear_tt: bool = True) -> None:
+        """Set engine and local state to the starting position."""
+        if clear_tt: self.engine.ucinewgame()
+        self.board = chess.Board()
+        self.engine.position_startpos()
 
-    # --- shared internals ---
-    def _ensure_position(self, fen: Optional[str], moves: Optional[List[str]], clear_tt: bool) -> None:
-        """Set FEN or startpos+moves. If neither is given and nothing loaded, set startpos."""
-        if fen:
-            if clear_tt: self.engine.ucinewgame()
-            self.engine.position_fen(fen)
-            self._has_position = True
-            return
-        if moves:
-            if clear_tt: self.engine.ucinewgame()
-            self.engine.position_startpos(moves)
-            self._has_position = True
-            return
-        if not self._has_position:
-            if clear_tt: self.engine.ucinewgame()
-            self.engine.position_startpos()
-            self._has_position = True
+    def load_fen(self, fen: str, clear_tt: bool = True) -> None:
+        """Set engine and local state from FEN."""
+        if clear_tt: self.engine.ucinewgame()
+        self.board = chess.Board(fen)
+        self.engine.position_fen(fen)
 
-    @staticmethod
-    def _flip_to_white(score: Score, side_to_move_is_white: bool) -> Score:
-        if side_to_move_is_white or score.kind == "mate":
-            return score
-        # Flip cp to white’s perspective
-        return Score(score.kind, -score.value)
+    def set_moves_from_start(self, moves: List[str], clear_tt: bool = True) -> None:
+        """Start from startpos and play a list of UCI moves, updating engine and local state."""
+        if clear_tt: self.engine.ucinewgame()
+        self.board = chess.Board()
+        for mv in moves:
+            self.board.push_uci(mv)
+        # Send in one shot (faster) or send final FEN:
+        self.engine.position_startpos(moves)
 
-    # --- public API (uniform shape) ---
+    def push_move(self, move_uci: str) -> None:
+        """Append a single move to the current position (keeps TT)."""
+        if self.board is None:
+            # default to startpos if nothing loaded yet
+            self.load_startpos(clear_tt=False)
+        # Update local state
+        self.board.push_uci(move_uci)
+        # Update engine to the new FEN (simple & robust)
+        self.engine.position_fen(self.board.fen())
+
+    def current_fen(self) -> str:
+        if self.board is None:
+            # define a sensible default
+            return chess.STARTING_FEN
+        return self.board.fen()
+
+    # ---------- evaluation ----------
     def get_evaluation(
         self,
         fen: Optional[str] = None,
         moves: Optional[List[str]] = None,
         depth: Optional[int] = None,
         clear_tt: bool = True,
-    ) -> Score:
+    ) -> Dict[str, int | str]:
         """
-        Evaluate a position.
-        - If `fen` is provided: sets that FEN (clears TT by default) and evaluates.
-        - Else if `moves` is provided: starts from startpos, plays moves, evaluates.
-        - Else: if no position set yet, evaluates startpos; otherwise evaluates current engine position.
-        Returns: Score(kind="cp"|"mate", value=int) from side-to-move perspective or white (configurable).
+        Evaluate a position using standard UCI (works with unpatched Stockfish).
+        If fen/moves provided, loads that first. If neither provided and no
+        position was loaded yet, uses startpos. Returns {'type': 'cp'|'mate', 'value': int}.
         """
-        self._ensure_position(fen, moves, clear_tt)
-        use_depth = depth if depth is not None else self.cfg.depth
+        # Load position if caller provided one
+        if fen is not None:
+            self.load_fen(fen, clear_tt=clear_tt)
+        elif moves is not None:
+            self.set_moves_from_start(moves, clear_tt=clear_tt)
+        elif self.board is None:
+            # Nothing set yet → startpos
+            self.load_startpos(clear_tt=clear_tt)
+        # else: use whatever is currently in self.board / engine
+
+        use_depth = depth if depth is not None else self.depth
         score, _ = self.engine.go_depth(use_depth)
+        # Score is from side-to-move perspective (Stockfish convention)
+        return {"type": score.kind, "value": score.value}
 
-        if self.cfg.perspective == "white":
-            # Determine side to move from the provided FEN or the last move list
-            stm_white = True
-            if fen:
-                try:
-                    stm_white = (fen.split()[1] == "w")
-                except Exception:
-                    stm_white = True
-            elif moves:
-                # startpos + even number of moves => black to move
-                stm_white = (len(moves) % 2 == 0)
-            # else: unknown; default to white
-            score = self._flip_to_white(score, stm_white)
+    def evaluate_position(self, fen: str) -> Dict[str, int | str]:
+        """Convenience: evaluate a single FEN."""
+        return self.get_evaluation(fen=fen, clear_tt=True)
 
-        return score
-
-    def evaluate_position(self, fen: str, depth: Optional[int] = None, clear_tt: bool = True) -> Score:
-        """Thin alias: evaluate a single FEN."""
-        return self.get_evaluation(fen=fen, depth=depth, clear_tt=clear_tt)
-
-    def evaluate_game(self, pgn_text: str, per_move: bool = True, depth: Optional[int] = None) -> List[Tuple[str, Score]]:
+    def evaluate_game(self, pgn_text: str) -> List[Tuple[str, Dict[str, int | str]]]:
         """
-        Evaluate a PGN mainline. If per_move=True, returns a list [(SAN, Score after move), ...].
+        Evaluate after each move of the PGN mainline.
+        Keeps TT between moves (clear_tt=False) for speed.
         """
         game = chess.pgn.read_game(StringIO(pgn_text))
         if not game:
             return []
+        self.load_startpos(clear_tt=True)
+        out: List[Tuple[str, Dict[str, int | str]]] = []
         board = game.board()
-        results: List[Tuple[str, Score]] = []
         for mv in game.mainline_moves():
             san = board.san(mv)
             board.push(mv)
-            s = self.get_evaluation(fen=board.fen(), depth=depth if depth is not None else self.cfg.depth, clear_tt=False)
-            results.append((san, s))
-        return results
+            # Keep local & engine state in sync incrementally
+            self.board = board.copy()
+            self.engine.position_fen(self.board.fen())
+            score, _ = self.engine.go_depth(self.depth)
+            out.append((san, {"type": score.kind, "value": score.value}))
+        return out
 
-    # Optional—works only if your engine implements 'eval_breakdown'
-    def get_evaluation_breakdown(self, fen: Optional[str] = None, clear_tt: bool = False) -> Optional[Dict]:
-        """
-        If fen provided, set it first (no TT clear by default to keep caches).
-        Returns a dict like {"mobility":..., "pawns":..., "total":...} or None if engine doesn't support it.
-        """
-        if fen:
-            self._ensure_position(fen, None, clear_tt)
+    # Optional: works only after you patch C++
+    def get_evaluation_breakdown(self, fen: Optional[str] = None) -> Optional[Dict]:
+        if fen is not None:
+            self.load_fen(fen, clear_tt=False)  # keep TT for speed
         return self.engine.eval_breakdown()
