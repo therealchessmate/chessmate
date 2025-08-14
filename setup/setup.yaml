@@ -11,4 +11,7 @@ stockfish_repos:
   official_url: https://github.com/official-stockfish/Stockfish.git
   patched_path: ../patched_stockfish
   patched_url: https://github.com/therealchessmate/PatchedStockfish.git
+tags:
+  official_stockfish: sf_17.1
+  patched_stockfish: psf_0.2
 first_time_setup: false

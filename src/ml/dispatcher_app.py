@@ -33,7 +33,7 @@ class DispatcherApp:
         platform_wrapper = self._find_platform_wrapper(platform_name)
         player = platform_wrapper.get_games_by_username(username, start_dt_utc, end_dt_utc, number_of_games)
     #     for pgn in pgns:
-    #         evaluated_pgn = stockfish_wrapper.evaluate_game(pgn)
+            evaluated_pgn = stockfish_wrapper.evaluate_game(pgn)
     #         evaluated_pgns[evaluated_pgn.id] = evaluated_pgn
     #     clusters = cluster_analysis(evaluated_pgns)
     #     mistakes = mistake_identifier(clusters)

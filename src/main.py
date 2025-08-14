@@ -11,7 +11,7 @@ config = load_config(CONFIG_PATH)
 # Step 2: Set user/platform/game details
 username = "Hikaru"
 platform_name = "ChessCom"
-number_of_games = 25
+number_of_games = 5
 
 # Step 3: Run dispatcher app
 dispatcher_app = DispatcherApp.start(config)
