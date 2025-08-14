@@ -1,5 +1,5 @@
 run_local: true
-install_dev_dependencies: true
+install_dev_dependencies: false
 force_rebuild:
   official_stockfish: false
   patched_stockfish: false
@@ -10,8 +10,8 @@ stockfish_repos:
   official_path: ../official_stockfish
   official_url: https://github.com/official-stockfish/Stockfish.git
   patched_path: ../patched_stockfish
-  patched_url: https://github.com/therealchessmate/PatchedStockfish.git
+  patched_url: https://github.com/therealchessmate/PatchedClassicalSF
 tags:
   official_stockfish: sf_17.1
-  patched_stockfish: psf_0.2
+  patched_stockfish: pcsf_0.1
 first_time_setup: false
