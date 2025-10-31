@@ -8,7 +8,7 @@ class StockfishWrapper:
         self.engine = UCIEngine(path_to_engine, options={"Threads": threads, "Hash": hash_mb})
         self.engine.start()
         self.depth = depth
-        self.board: Optional[chess.Board] = None  # track current board locally
+        self.board: chess.Board  # track current board locally
 
     # ---------- position management ----------
     def load_startpos(self, clear_tt: bool = True) -> None:

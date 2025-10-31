@@ -1,4 +1,3 @@
-# engines/uci_engine.py
 import subprocess, threading, queue, time, re, json
 from dataclasses import dataclass
 from typing import List, Optional, Dict, Tuple, Callable, Iterable, Union
@@ -171,7 +170,7 @@ class UCIEngine:
         return self.go_depth(depth=1_000_000, timeout=timeout)  # depth is ignored by engine in movetime mode
 
     # ---- Optional custom hook (safe if engine unpatched) ----
-    def eval_breakdown(self, timeout: float = 5.0) -> Optional[Dict]:
+    def eval_breakdown(self, timeout: float = 20.0) -> Optional[Dict]:
         """
         If your patched engine prints a line like:
           evalbreakdown {"mobility":12,"pawns":-3,"total":9}
@@ -179,11 +178,11 @@ class UCIEngine:
         """
         self._send("eval_breakdown")
         try:
-            lines = self._expect(lambda l: l.startswith("evalbreakdown "), timeout=timeout)
+            lines = self._expect(lambda l: l.startswith("evalbreakdown"), timeout=timeout)
         except UCITimeout:
             return None
         for l in reversed(lines):
-            if l.startswith("evalbreakdown "):
+            if l.startswith("evalbreakdown"):
                 try:
                     return json.loads(l.split(" ", 1)[1])
                 except Exception:
