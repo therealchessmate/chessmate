@@ -776,7 +776,11 @@ class Stockfish:
 
     def __del__(self) -> None:
         Stockfish._del_counter += 1
-        if self._stockfish.poll() is None:
-            self._put("quit")
-            while self._stockfish.poll() is None:
+        if hasattr(self, "_stockfish") and self._stockfish and self._stockfish.poll() is None:
+            try:
+                self._put("quit")
+                while self._stockfish.poll() is None:
+                    pass
+            except Exception:
                 pass
+
