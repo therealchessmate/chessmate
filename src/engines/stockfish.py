@@ -514,7 +514,7 @@ class Stockfish:
             elif splitted_text[0] == "bestmove":
                 return evaluation
 
-    def get_evaluation_parameters(self) -> str:
+    def get_evaluation_info(self) -> str:
         """Returns a detailed breakdown of Stockfish's evaluation for the current position.
         This uses the UCI 'eval' command, which internally calls Eval::trace() in the C++ engine.
 
