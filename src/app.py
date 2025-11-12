@@ -8,7 +8,7 @@ from api.evaluate import router as evaluate_router
 async def lifespan(app: FastAPI):
     # --- Startup ---
     print("Initializing Stockfish engine...")
-    app.state.stockfish = Stockfish(path="./stockfish_bin/stockfish", depth=15)
+    app.state.stockfish = Stockfish(path="./stockfish_bin/patched_stockfish", depth=15)
     
     yield  # ⬅️ The app runs while paused here.
     
