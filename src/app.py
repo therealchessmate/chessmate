@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from engines.stockfish import Stockfish
-from api.evaluate import router as evaluate_router
+from src.engines.stockfish import Stockfish
+from src.api.evaluate import router as evaluate_router
 
 
 @asynccontextmanager
