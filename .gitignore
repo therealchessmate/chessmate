@@ -26,5 +26,5 @@ logs/*
 !logs/.gitkeep
 
 # Ignore Stockfish binary files inside these folders
-stockfish_bin/official_stockfish
-stockfish_bin/patched_stockfish
+# stockfish_bin/official_stockfish
+# stockfish_bin/patched_stockfish
