@@ -22,7 +22,7 @@
   <label>FEN:</label>
   <textarea id="fen" rows="2">rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1</textarea>
 
-  <label>Depth:</label>
+  <label>Depth (1 – 40):</label>
   <input id="depth" type="number" value="15" min="1" max="40">
 
   <button onclick="analyze()">Analyze</button>
@@ -37,8 +37,8 @@
     <p style="font-size:0.9em; margin-top:0.5em;">
       <b>Column meaning:</b><br>
       • <b>Term</b> – individual evaluation component.<br>
-      • <b>White MG / EG</b> – mid-game and end-game score for White.<br>
-      • <b>Black MG / EG</b> – mid-game and end-game score for Black.<br>
+      • <b>White MG / EG</b> – mid-game / end-game score for White.<br>
+      • <b>Black MG / EG</b> – mid-game / end-game score for Black.<br>
       • <b>Total MG / EG</b> – combined differential (White − Black).<br>
       Positive values favour White; negative favour Black.
     </p>
@@ -50,88 +50,95 @@
   <h4>Legend of Evaluation Terms</h4>
   <ul>
     <li><b>Material</b> – raw piece balance.</li>
-    <li><b>Imbalance</b> – structural difference in piece composition (e.g. 2 knights vs bishop + pawn).</li>
-    <li><b>Pawns – Queens</b> – piece-specific activity and coordination for each type.</li>
-    <li><b>Mobility</b> – number and quality of legal moves available.</li>
-    <li><b>King safety</b> – exposure of the king to attack and shielded squares.</li>
-    <li><b>Threats</b> – direct and potential attacks on opponent’s pieces.</li>
+    <li><b>Imbalance</b> – difference in piece composition (e.g. 2 knights vs bishop + pawn).</li>
+    <li><b>Pawns – Queens</b> – piece-specific activity and coordination.</li>
+    <li><b>Mobility</b> – number and quality of legal moves.</li>
+    <li><b>King safety</b> – exposure of the king.</li>
+    <li><b>Threats</b> – direct and potential attacks.</li>
     <li><b>Passed / Space / Winnable</b> – positional and end-game control factors.</li>
   </ul>
 
-<script>
-  async function analyze() {
-    const base = window.location.origin + "/api";
-    const fen = document.getElementById("fen").value.trim();
-    const depth = document.getElementById("depth").value;
-    const button = document.querySelector("button");
+  <script>
+    async function analyze() {
+      const base = window.location.origin + "/api";
+      const fen = document.getElementById("fen").value.trim();
+      let depth = parseInt(document.getElementById("depth").value, 10);
+      const button = document.querySelector("button");
 
-    // Disable button to avoid double clicks
-    button.disabled = true;
-    button.textContent = "Analyzing...";
+      // ✅ sanitize & cap depth
+      if (isNaN(depth) || depth < 1) {
+        alert("Depth must be ≥ 1. Using default 15.");
+        depth = 15;
+      }
+      if (depth > 40) {
+        alert("Depth capped at 40 for stability.");
+        depth = 40;
+        document.getElementById("depth").value = 40;
+      }
 
-    try {
-      // --- Update depth ---
-      const depthRes = await fetch(`${base}/depth?depth=${depth}`, { method: "POST" });
-      if (!depthRes.ok) throw new Error("Depth update failed");
+      button.disabled = true;
+      button.textContent = "Analyzing…";
 
-      // --- Evaluation ---
-      const evalRes = await fetch(`${base}/evaluate?fen=${encodeURIComponent(fen)}`);
-      if (!evalRes.ok) throw new Error("Evaluation failed");
-      const evalData = await evalRes.json();
-      document.getElementById("evaluation").textContent =
-        evalData.type === "cp" ? `${evalData.value} cp` : `Mate in ${evalData.value}`;
+      try {
+        // --- Update engine depth ---
+        const depthRes = await fetch(`${base}/depth?depth=${depth}`, { method: "POST" });
+        if (!depthRes.ok) throw new Error("Depth update failed");
 
-      // --- Evaluation info ---
-      const infoRes = await fetch(`${base}/evaluation-info?fen=${encodeURIComponent(fen)}`);
-      if (!infoRes.ok) throw new Error("Eval info failed");
-      const infoText = await infoRes.text();
-      renderInfo(infoText);
+        // --- Evaluation ---
+        const evalRes = await fetch(`${base}/evaluate?fen=${encodeURIComponent(fen)}`);
+        if (!evalRes.ok) throw new Error("Evaluation failed");
+        const evalData = await evalRes.json();
+        document.getElementById("evaluation").textContent =
+          evalData.type === "cp" ? `${evalData.value} cp` : `Mate in ${evalData.value}`;
 
-      // --- Top moves ---
-      const topRes = await fetch(`${base}/top-moves?fen=${encodeURIComponent(fen)}&n=5`);
-      if (!topRes.ok) throw new Error("Top moves failed");
-      const topData = await topRes.json();
-      document.getElementById("topMoves").innerHTML =
-        topData.map(m => `<li>${m.Move} (${m.Centipawn} cp)</li>`).join("");
+        // --- Evaluation info ---
+        const infoRes = await fetch(`${base}/evaluation-info?fen=${encodeURIComponent(fen)}`);
+        if (!infoRes.ok) throw new Error("Eval info failed");
+        const infoText = await infoRes.text();
+        renderInfo(infoText);
 
-    } catch (err) {
-      console.error(err);
-      alert("Error fetching analysis:\n" + err.message);
-    } finally {
-      // Re-enable button even if something failed
-      button.disabled = false;
-      button.textContent = "Analyze";
-    }
-  }
+        // --- Top moves ---
+        const topRes = await fetch(`${base}/top-moves?fen=${encodeURIComponent(fen)}&n=5`);
+        if (!topRes.ok) throw new Error("Top moves failed");
+        const topData = await topRes.json();
+        document.getElementById("topMoves").innerHTML =
+          topData.map(m => `<li>${m.Move} (${m.Centipawn} cp)</li>`).join("");
 
-  function renderInfo(raw) {
-    const container = document.getElementById("infoContainer");
-    container.innerHTML = "";
-    const lines = raw.split("\n").filter(l => /^[A-Z]/i.test(l) && l.includes("|"));
-    if (!lines.length) { container.textContent = raw; return; }
-
-    const table = document.createElement("table");
-    table.innerHTML = `<tr>
-      <th>Term</th><th>White MG</th><th>White EG</th>
-      <th>Black MG</th><th>Black EG</th><th>Total MG</th><th>Total EG</th>
-    </tr>`;
-
-    for (const line of lines) {
-      const cols = line.split("|").map(c => c.trim()).filter(Boolean);
-      if (cols.length >= 4) {
-        const [term, white, black, total] = cols;
-        const w = white.split(" "), b = black.split(" "), t = total.split(" ");
-        table.innerHTML += `<tr>
-          <td>${term}</td><td>${w[0]||""}</td><td>${w[1]||""}</td>
-          <td>${b[0]||""}</td><td>${b[1]||""}</td>
-          <td>${t[0]||""}</td><td>${t[1]||""}</td>
-        </tr>`;
+      } catch (err) {
+        console.error(err);
+        alert("Error fetching analysis:\n" + err.message);
+      } finally {
+        button.disabled = false;
+        button.textContent = "Analyze";
       }
     }
-    container.appendChild(table);
-  }
-</script>
 
+    function renderInfo(raw) {
+      const container = document.getElementById("infoContainer");
+      container.innerHTML = "";
+      const lines = raw.split("\n").filter(l => /^[A-Z]/i.test(l) && l.includes("|"));
+      if (!lines.length) { container.textContent = raw; return; }
+
+      const table = document.createElement("table");
+      table.innerHTML = `<tr>
+        <th>Term</th><th>White MG</th><th>White EG</th>
+        <th>Black MG</th><th>Black EG</th><th>Total MG</th><th>Total EG</th>
+      </tr>`;
+
+      for (const line of lines) {
+        const cols = line.split("|").map(c => c.trim()).filter(Boolean);
+        if (cols.length >= 4) {
+          const [term, white, black, total] = cols;
+          const w = white.split(" "), b = black.split(" "), t = total.split(" ");
+          table.innerHTML += `<tr>
+            <td>${term}</td><td>${w[0]||""}</td><td>${w[1]||""}</td>
+            <td>${b[0]||""}</td><td>${b[1]||""}</td>
+            <td>${t[0]||""}</td><td>${t[1]||""}</td>
+          </tr>`;
+        }
+      }
+      container.appendChild(table);
+    }
+  </script>
 </body>
 </html>
-
