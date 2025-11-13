@@ -1,201 +1,24 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8" />
-  <title>Chessmate Analysis UI</title>
+  <title>Script Load Test</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
-  <style>
-    body { font-family: sans-serif; max-width: 900px; margin: 40px auto; }
-    h1 { font-size: 1.4em; }
-    label { display: block; margin-top: 1em; }
-    textarea, input { width: 100%; padding: 6px; font-family: monospace; }
-    button { margin-top: 1em; padding: 8px 12px; cursor: pointer; }
-    pre, table { background: #f6f6f6; padding: 8px; border-radius: 6px; }
-    table { width: 100%; border-collapse: collapse; font-family: monospace; }
-    th, td { border: 1px solid #ddd; padding: 4px 6px; text-align: right; }
-    th:first-child, td:first-child { text-align: left; }
-    #board-container { position: relative; width: 400px; margin: 20px auto; }
-    #board { width: 400px; }
-    #arrows { position: absolute; top: 0; left: 0; width: 400px; height: 400px; pointer-events: none; }
-    ul { margin-top: 0.5em; }
-  </style>
 </head>
-
 <body>
-  <h1>Chessmate Analysis UI</h1>
+  <h1>Testing chessboard.js + chess.js</h1>
+  <div id="board" style="width:400px"></div>
 
-  <!-- Board -->
-  <div id="board-container">
-    <div id="board"></div>
-    <svg id="arrows"></svg>
-  </div>
-
-  <!-- FEN input (editable) -->
-  <label>FEN:</label>
-  <textarea id="fen" rows="2">rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1</textarea>
-
-  <label>Depth:</label>
-  <input id="depth" type="number" value="15" min="1" max="40">
-
-  <button onclick="analyze()">Analyze</button>
-
-  <div class="result">
-    <h3>Evaluation:</h3>
-    <pre id="evaluation">-</pre>
-
-    <h3>Evaluation Info:</h3>
-    <div id="infoContainer">-</div>
-
-    <h3>Top 5 Moves:</h3>
-    <ul id="topMoves"></ul>
-  </div>
-
-  <h4>Legend</h4>
-  <ul>
-    <li><b>Material</b>: raw piece balance</li>
-    <li><b>Imbalance</b>: piece composition differences</li>
-    <li><b>Pawns–Queens</b>: activity per piece type</li>
-    <li><b>Mobility</b>: piece freedom</li>
-    <li><b>King safety</b>: exposure of the king</li>
-    <li><b>Threats / Passed / Space / Winnable</b>: positional & endgame factors</li>
-  </ul>
-
-  <!-- ✅ Scripts placed last -->
   <script src="https://cdn.jsdelivr.net/npm/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chess.js@0.13.4/dist/chess.min.js"></script>
 
   <script>
-    let game, board;
-    const arrowsSvg = document.getElementById("arrows");
-    const squareSize = 400 / 8;
-
-    window.addEventListener("load", () => {
-      game = new Chess();
-      board = Chessboard('board', {
-        position: 'start',
-        draggable: true,
-        dropOffBoard: 'snapback',
-        onDrop: onDrop,
-        onSnapEnd: updateFEN
-      });
-
-      document.getElementById("fen").addEventListener("change", () => {
-        const fen = document.getElementById("fen").value.trim();
-        try {
-          game.load(fen);
-          board.position(fen);
-        } catch {
-          alert("Invalid FEN");
-        }
-      });
-    });
-
-    function onDrop(source, target) {
-      const move = game.move({ from: source, to: target, promotion: 'q' });
-      if (move === null) return 'snapback';
-      updateFEN();
-    }
-
-    function updateFEN() {
-      const fen = game.fen();
-      document.getElementById("fen").value = fen;
-    }
-
-    function clearArrows() {
-      [...arrowsSvg.querySelectorAll("line")].forEach(e => e.remove());
-    }
-
-    function squareToXY(square) {
-      const file = square.charCodeAt(0) - 97;
-      const rank = 8 - parseInt(square[1]);
-      return { x: file * squareSize + squareSize / 2,
-               y: rank * squareSize + squareSize / 2 };
-    }
-
-    function drawArrow(from, to, color="#d22") {
-      const {x: x1, y: y1} = squareToXY(from);
-      const {x: x2, y: y2} = squareToXY(to);
-      const arrow = document.createElementNS("http://www.w3.org/2000/svg", "line");
-      arrow.setAttribute("x1", x1);
-      arrow.setAttribute("y1", y1);
-      arrow.setAttribute("x2", x2);
-      arrow.setAttribute("y2", y2);
-      arrow.setAttribute("stroke", color);
-      arrow.setAttribute("stroke-width", "6");
-      arrow.setAttribute("stroke-linecap", "round");
-      arrow.setAttribute("marker-end", "url(#arrowhead)");
-      arrowsSvg.appendChild(arrow);
-    }
-
-    // Arrowhead marker
-    const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
-    defs.innerHTML = `
-      <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="5" refY="3.5" orient="auto">
-        <polygon points="0 0, 10 3.5, 0 7" fill="#d22" />
-      </marker>`;
-    arrowsSvg.appendChild(defs);
-
-    async function analyze() {
-      clearArrows();
-
-      const base = window.location.origin + "/api";
-      const fen = document.getElementById("fen").value.trim();
-      const depth = document.getElementById("depth").value;
-
-      // Sync board to FEN before analysis
-      try {
-        game.load(fen);
-        board.position(fen);
-      } catch { alert("Invalid FEN"); return; }
-
-      await fetch(`${base}/depth?depth=${depth}`, { method: "POST" });
-
-      const evalRes = await fetch(`${base}/evaluate?fen=${encodeURIComponent(fen)}`);
-      const evalData = await evalRes.json();
-      document.getElementById("evaluation").textContent =
-        evalData.type === "cp" ? evalData.value + " cp" : "Mate in " + evalData.value;
-
-      const infoRes = await fetch(`${base}/evaluation-info?fen=${encodeURIComponent(fen)}`);
-      const infoText = await infoRes.text();
-      renderInfo(infoText);
-
-      const topRes = await fetch(`${base}/top-moves?fen=${encodeURIComponent(fen)}&n=5`);
-      const topData = await topRes.json();
-      document.getElementById("topMoves").innerHTML =
-        topData.map(m => `<li>${m.Move} (${m.Centipawn} cp)</li>`).join("");
-
-      const colors = ["#d22", "#e85", "#fb3", "#6c3", "#38c"];
-      topData.slice(0, 5).forEach((m, i) => {
-        const move = m.Move || "";
-        if (move.length >= 4)
-          drawArrow(move.slice(0,2), move.slice(2,4), colors[i] || "#d22");
-      });
-    }
-
-    function renderInfo(raw) {
-      const container = document.getElementById("infoContainer");
-      container.innerHTML = "";
-      const lines = raw.split("\n").filter(l => l.match(/^[A-Z]/i) && l.includes("|"));
-      if (!lines.length) { container.textContent = raw; return; }
-
-      const table = document.createElement("table");
-      const header = `<tr><th>Term</th><th>White MG</th><th>White EG</th><th>Black MG</th><th>Black EG</th><th>Total MG</th><th>Total EG</th></tr>`;
-      table.innerHTML = header;
-
-      for (const line of lines) {
-        const cols = line.split("|").map(c => c.trim()).filter(Boolean);
-        if (cols.length >= 4) {
-          const [term, white, black, total] = cols;
-          const w = white.split(" ");
-          const b = black.split(" ");
-          const t = total.split(" ");
-          const row = `<tr><td>${term}</td><td>${w[0]||""}</td><td>${w[1]||""}</td>
-                       <td>${b[0]||""}</td><td>${b[1]||""}</td>
-                       <td>${t[0]||""}</td><td>${t[1]||""}</td></tr>`;
-          table.innerHTML += row;
-        }
-      }
-      container.appendChild(table);
+    console.log("window.Chessboard:", typeof Chessboard);
+    console.log("window.Chess:", typeof Chess);
+    if (typeof Chessboard !== "undefined") {
+      const board = Chessboard("board", { position: "start" });
+    } else {
+      document.body.innerHTML += "<p style='color:red'>Chessboard.js failed to load.</p>";
     }
   </script>
 </body>
