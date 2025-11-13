@@ -58,60 +58,80 @@
     <li><b>Passed / Space / Winnable</b> – positional and end-game control factors.</li>
   </ul>
 
-  <script>
-    async function analyze() {
-      const base = window.location.origin + "/api";
-      const fen = document.getElementById("fen").value.trim();
-      const depth = document.getElementById("depth").value;
+<script>
+  async function analyze() {
+    const base = window.location.origin + "/api";
+    const fen = document.getElementById("fen").value.trim();
+    const depth = document.getElementById("depth").value;
+    const button = document.querySelector("button");
 
-      try {
-        await fetch(`${base}/depth?depth=${depth}`, { method: "POST" });
+    // Disable button to avoid double clicks
+    button.disabled = true;
+    button.textContent = "Analyzing...";
 
-        const evalRes = await fetch(`${base}/evaluate?fen=${encodeURIComponent(fen)}`);
-        const evalData = await evalRes.json();
-        document.getElementById("evaluation").textContent =
-          evalData.type === "cp" ? `${evalData.value} cp` : `Mate in ${evalData.value}`;
+    try {
+      // --- Update depth ---
+      const depthRes = await fetch(`${base}/depth?depth=${depth}`, { method: "POST" });
+      if (!depthRes.ok) throw new Error("Depth update failed");
 
-        const infoRes = await fetch(`${base}/evaluation-info?fen=${encodeURIComponent(fen)}`);
-        const infoText = await infoRes.text();
-        renderInfo(infoText);
+      // --- Evaluation ---
+      const evalRes = await fetch(`${base}/evaluate?fen=${encodeURIComponent(fen)}`);
+      if (!evalRes.ok) throw new Error("Evaluation failed");
+      const evalData = await evalRes.json();
+      document.getElementById("evaluation").textContent =
+        evalData.type === "cp" ? `${evalData.value} cp` : `Mate in ${evalData.value}`;
 
-        const topRes = await fetch(`${base}/top-moves?fen=${encodeURIComponent(fen)}&n=5`);
-        const topData = await topRes.json();
-        document.getElementById("topMoves").innerHTML =
-          topData.map(m => `<li>${m.Move} (${m.Centipawn} cp)</li>`).join("");
-      } catch (err) {
-        alert("Error fetching analysis:\n" + err);
+      // --- Evaluation info ---
+      const infoRes = await fetch(`${base}/evaluation-info?fen=${encodeURIComponent(fen)}`);
+      if (!infoRes.ok) throw new Error("Eval info failed");
+      const infoText = await infoRes.text();
+      renderInfo(infoText);
+
+      // --- Top moves ---
+      const topRes = await fetch(`${base}/top-moves?fen=${encodeURIComponent(fen)}&n=5`);
+      if (!topRes.ok) throw new Error("Top moves failed");
+      const topData = await topRes.json();
+      document.getElementById("topMoves").innerHTML =
+        topData.map(m => `<li>${m.Move} (${m.Centipawn} cp)</li>`).join("");
+
+    } catch (err) {
+      console.error(err);
+      alert("Error fetching analysis:\n" + err.message);
+    } finally {
+      // Re-enable button even if something failed
+      button.disabled = false;
+      button.textContent = "Analyze";
+    }
+  }
+
+  function renderInfo(raw) {
+    const container = document.getElementById("infoContainer");
+    container.innerHTML = "";
+    const lines = raw.split("\n").filter(l => /^[A-Z]/i.test(l) && l.includes("|"));
+    if (!lines.length) { container.textContent = raw; return; }
+
+    const table = document.createElement("table");
+    table.innerHTML = `<tr>
+      <th>Term</th><th>White MG</th><th>White EG</th>
+      <th>Black MG</th><th>Black EG</th><th>Total MG</th><th>Total EG</th>
+    </tr>`;
+
+    for (const line of lines) {
+      const cols = line.split("|").map(c => c.trim()).filter(Boolean);
+      if (cols.length >= 4) {
+        const [term, white, black, total] = cols;
+        const w = white.split(" "), b = black.split(" "), t = total.split(" ");
+        table.innerHTML += `<tr>
+          <td>${term}</td><td>${w[0]||""}</td><td>${w[1]||""}</td>
+          <td>${b[0]||""}</td><td>${b[1]||""}</td>
+          <td>${t[0]||""}</td><td>${t[1]||""}</td>
+        </tr>`;
       }
     }
+    container.appendChild(table);
+  }
+</script>
 
-    function renderInfo(raw) {
-      const container = document.getElementById("infoContainer");
-      container.innerHTML = "";
-      const lines = raw.split("\n").filter(l => /^[A-Z]/i.test(l) && l.includes("|"));
-      if (!lines.length) { container.textContent = raw; return; }
-
-      const table = document.createElement("table");
-      table.innerHTML = `<tr>
-        <th>Term</th><th>White MG</th><th>White EG</th>
-        <th>Black MG</th><th>Black EG</th><th>Total MG</th><th>Total EG</th>
-      </tr>`;
-
-      for (const line of lines) {
-        const cols = line.split("|").map(c => c.trim()).filter(Boolean);
-        if (cols.length >= 4) {
-          const [term, white, black, total] = cols;
-          const w = white.split(" "), b = black.split(" "), t = total.split(" ");
-          table.innerHTML += `<tr>
-            <td>${term}</td><td>${w[0]||""}</td><td>${w[1]||""}</td>
-            <td>${b[0]||""}</td><td>${b[1]||""}</td>
-            <td>${t[0]||""}</td><td>${t[1]||""}</td>
-          </tr>`;
-        }
-      }
-      container.appendChild(table);
-    }
-  </script>
 </body>
 </html>
 
