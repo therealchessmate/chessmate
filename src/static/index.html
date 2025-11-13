@@ -2,23 +2,23 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>Script Load Test</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
+  <title>Local Board Test</title>
+  <link rel="stylesheet" href="/static/lib/chessboard-1.0.0.min.css" />
 </head>
 <body>
-  <h1>Testing chessboard.js + chess.js</h1>
+  <h1>Local chessboard.js test</h1>
   <div id="board" style="width:400px"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chess.js@0.13.4/dist/chess.min.js"></script>
+  <script src="/static/lib/chessboard-1.0.0.min.js"></script>
+  <script src="/static/lib/chess.min.js"></script>
 
   <script>
-    console.log("window.Chessboard:", typeof Chessboard);
-    console.log("window.Chess:", typeof Chess);
+    console.log("Chessboard:", typeof Chessboard);
+    console.log("Chess:", typeof Chess);
     if (typeof Chessboard !== "undefined") {
-      const board = Chessboard("board", { position: "start" });
+      Chessboard("board", { position: "start" });
     } else {
-      document.body.innerHTML += "<p style='color:red'>Chessboard.js failed to load.</p>";
+      document.body.innerHTML += "<p style='color:red'>Failed to load local JS.</p>";
     }
   </script>
 </body>
