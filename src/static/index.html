@@ -3,22 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <title>Chessmate Analysis UI</title>
+
+  <!-- ✅ chessboard.js and chess.js -->
+  <link rel="stylesheet" href="https://unpkg.com/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
+  <script src="https://unpkg.com/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js"></script>
+
   <style>
-    body { font-family: sans-serif; max-width: 700px; margin: 40px auto; }
+    body { font-family: sans-serif; max-width: 900px; margin: 40px auto; }
     h1 { font-size: 1.4em; }
     label { display: block; margin-top: 1em; }
     textarea, input { width: 100%; padding: 6px; }
     button { margin-top: 1em; padding: 8px 12px; cursor: pointer; }
-    pre { background: #f6f6f6; padding: 8px; border-radius: 6px;
-          white-space: pre; font-family: monospace; overflow-x: auto; }
+    pre, table { background: #f6f6f6; padding: 8px; border-radius: 6px; }
+    table { width: 100%; border-collapse: collapse; font-family: monospace; }
+    th, td { border: 1px solid #ddd; padding: 4px 6px; text-align: right; }
+    th:first-child, td:first-child { text-align: left; }
+    #board { margin: 20px auto; width: 400px; }
+    #fenDisplay { margin-top: 6px; font-family: monospace; background: #f6f6f6; padding: 6px; border-radius: 4px; }
     ul { margin-top: 0.5em; }
   </style>
 </head>
 <body>
   <h1>Chessmate Analysis UI</h1>
 
-  <label>FEN:</label>
-  <textarea id="fen" rows="2">rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1</textarea>
+  <!-- ✅ Interactive board -->
+  <div id="board"></div>
+  <div id="fenDisplay"></div>
 
   <label>Depth:</label>
   <input id="depth" type="number" value="15" min="1" max="40">
@@ -30,51 +41,100 @@
     <pre id="evaluation">-</pre>
 
     <h3>Evaluation Info:</h3>
-    <pre id="evaluationInfo">-</pre>
+    <div id="infoContainer">-</div>
 
     <h3>Top 5 Moves:</h3>
     <ul id="topMoves"></ul>
   </div>
 
   <script>
+    // --- Initialize chess logic and board ---
+    const game = new Chess();
+    const board = Chessboard('board', {
+      position: 'start',
+      draggable: true,
+      dropOffBoard: 'snapback',
+      onDrop: onDrop,
+      onSnapEnd: updateFEN
+    });
+
+    // Update FEN display under board
+    function updateFEN() {
+      const fen = game.fen();
+      document.getElementById("fenDisplay").textContent = fen;
+    }
+    updateFEN();
+
+    // Handle piece drops
+    function onDrop(source, target) {
+      const move = game.move({ from: source, to: target, promotion: 'q' });
+      if (move === null) return 'snapback';
+      updateFEN();
+    }
+
+    // --- Analysis function ---
     async function analyze() {
       const base = window.location.origin + "/api";
-      const fen = encodeURIComponent(document.getElementById("fen").value.trim());
+      const fen = game.fen();
       const depth = document.getElementById("depth").value;
 
       // Update depth
       await fetch(`${base}/depth?depth=${depth}`, { method: "POST" });
 
       // Get evaluation
-      const evalRes = await fetch(`${base}/evaluate?fen=${fen}`);
+      const evalRes = await fetch(`${base}/evaluate?fen=${encodeURIComponent(fen)}`);
       const evalData = await evalRes.json();
       document.getElementById("evaluation").textContent =
         evalData.type === "cp" ? evalData.value + " cp" : "Mate in " + evalData.value;
 
-      // Get evaluation info (plain text)
-      const infoRes = await fetch(`${base}/evaluation-info?fen=${fen}`);
+      // Get evaluation info (raw text → parsed table)
+      const infoRes = await fetch(`${base}/evaluation-info?fen=${encodeURIComponent(fen)}`);
       const infoText = await infoRes.text();
-      document.getElementById("evaluationInfo").textContent = infoText;
+      renderInfo(infoText);
 
       // Get top moves
-      const topRes = await fetch(`${base}/top-moves?fen=${fen}&n=5`);
+      const topRes = await fetch(`${base}/top-moves?fen=${encodeURIComponent(fen)}&n=5`);
       const topData = await topRes.json();
-      const list = document.getElementById("topMoves");
-      list.innerHTML = topData
-        .map(m => `<li>${m.Move} (${m.Centipawn} cp)</li>`)
-        .join("");
+      document.getElementById("topMoves").innerHTML =
+        topData.map(m => `<li>${m.Move} (${m.Centipawn} cp)</li>`).join("");
+    }
+
+    // --- Evaluation info parser ---
+    function renderInfo(raw) {
+      const container = document.getElementById("infoContainer");
+      container.innerHTML = "";
+      const lines = raw.split("\n").filter(l => l.match(/^[A-Z]/i) && l.includes("|"));
+      if (!lines.length) { container.textContent = raw; return; }
+
+      const table = document.createElement("table");
+      const header = `<tr><th>Term</th><th>White MG</th><th>White EG</th><th>Black MG</th><th>Black EG</th><th>Total MG</th><th>Total EG</th></tr>`;
+      table.innerHTML = header;
+
+      for (const line of lines) {
+        const cols = line.split("|").map(c => c.trim()).filter(Boolean);
+        if (cols.length >= 4) {
+          const [term, white, black, total] = cols;
+          const w = white.split(" ");
+          const b = black.split(" ");
+          const t = total.split(" ");
+          const row = `<tr><td>${term}</td><td>${w[0]||""}</td><td>${w[1]||""}</td>
+                       <td>${b[0]||""}</td><td>${b[1]||""}</td>
+                       <td>${t[0]||""}</td><td>${t[1]||""}</td></tr>`;
+          table.innerHTML += row;
+        }
+      }
+      container.appendChild(table);
     }
   </script>
 
   <h4>Legend</h4>
   <ul>
     <li><b>Material</b>: raw piece balance</li>
-    <li><b>Imbalance</b>: piece composition differences (e.g., bishop pair)</li>
-    <li><b>Pawns – Queens</b>: activity/structure by piece type</li>
-    <li><b>Mobility</b>: freedom of pieces</li>
+    <li><b>Imbalance</b>: piece composition differences</li>
+    <li><b>Pawns–Queens</b>: activity per piece type</li>
+    <li><b>Mobility</b>: piece freedom</li>
     <li><b>King safety</b>: exposure of the king</li>
     <li><b>Threats / Passed / Space / Winnable</b>: positional & endgame factors</li>
-    <li><b>Total</b>: combined static evaluation from White’s view</li>
   </ul>
 </body>
 </html>
