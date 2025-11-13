@@ -4,32 +4,38 @@
   <meta charset="UTF-8">
   <title>Chessmate Analysis UI</title>
 
-  <!-- ✅ chessboard.js and chess.js -->
-  <link rel="stylesheet" href="https://unpkg.com/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
-  <script src="https://unpkg.com/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+  <!-- ✅ chessboard.js + chess.js -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js"></script>
 
   <style>
     body { font-family: sans-serif; max-width: 900px; margin: 40px auto; }
-    h1 { font-size: 1.4em; }
+    h1 { font-size: 1.4em; margin-bottom: 0.5em; }
     label { display: block; margin-top: 1em; }
-    textarea, input { width: 100%; padding: 6px; }
+    input { width: 100%; padding: 6px; }
     button { margin-top: 1em; padding: 8px 12px; cursor: pointer; }
     pre, table { background: #f6f6f6; padding: 8px; border-radius: 6px; }
     table { width: 100%; border-collapse: collapse; font-family: monospace; }
     th, td { border: 1px solid #ddd; padding: 4px 6px; text-align: right; }
     th:first-child, td:first-child { text-align: left; }
-    #board { margin: 20px auto; width: 400px; }
-    #fenDisplay { margin-top: 6px; font-family: monospace; background: #f6f6f6; padding: 6px; border-radius: 4px; }
-    ul { margin-top: 0.5em; }
+    #board-container { position: relative; width: 400px; margin: 20px auto; }
+    #board { width: 400px; }
+    #arrows { position: absolute; top: 0; left: 0; width: 400px; height: 400px; pointer-events: none; }
+    #fenDisplay { text-align: center; margin-top: 6px; font-family: monospace;
+                  background: #f6f6f6; padding: 6px; border-radius: 4px; }
   </style>
 </head>
 <body>
   <h1>Chessmate Analysis UI</h1>
 
-  <!-- ✅ Interactive board -->
-  <div id="board"></div>
-  <div id="fenDisplay"></div>
+  <!-- 🧩 Board with overlay for arrows -->
+  <div id="board-container">
+    <div id="board"></div>
+    <svg id="arrows"></svg>
+  </div>
+
+  <div id="fenDisplay">FEN will appear here</div>
 
   <label>Depth:</label>
   <input id="depth" type="number" value="15" min="1" max="40">
@@ -58,48 +64,92 @@
       onSnapEnd: updateFEN
     });
 
-    // Update FEN display under board
+    const arrowsSvg = document.getElementById("arrows");
+    const squareSize = 400 / 8;
+
+    // Ensure board renders after DOM ready
+    window.addEventListener("load", () => {
+      board.position("start");
+      updateFEN();
+    });
+
+    function squareToXY(square) {
+      const file = square.charCodeAt(0) - 97;
+      const rank = 8 - parseInt(square[1]);
+      return { x: file * squareSize + squareSize / 2,
+               y: rank * squareSize + squareSize / 2 };
+    }
+
+    function drawArrow(from, to, color="#d22") {
+      const {x: x1, y: y1} = squareToXY(from);
+      const {x: x2, y: y2} = squareToXY(to);
+      const arrow = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      arrow.setAttribute("x1", x1);
+      arrow.setAttribute("y1", y1);
+      arrow.setAttribute("x2", x2);
+      arrow.setAttribute("y2", y2);
+      arrow.setAttribute("stroke", color);
+      arrow.setAttribute("stroke-width", "6");
+      arrow.setAttribute("stroke-linecap", "round");
+      arrow.setAttribute("marker-end", "url(#arrowhead)");
+      arrowsSvg.appendChild(arrow);
+    }
+
+    // Marker (arrowhead)
+    const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+    defs.innerHTML = `
+      <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="5" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="#d22" />
+      </marker>`;
+    arrowsSvg.appendChild(defs);
+
+    function clearArrows() {
+      [...arrowsSvg.querySelectorAll("line")].forEach(e => e.remove());
+    }
+
     function updateFEN() {
       const fen = game.fen();
       document.getElementById("fenDisplay").textContent = fen;
     }
-    updateFEN();
 
-    // Handle piece drops
     function onDrop(source, target) {
       const move = game.move({ from: source, to: target, promotion: 'q' });
       if (move === null) return 'snapback';
       updateFEN();
     }
 
-    // --- Analysis function ---
     async function analyze() {
+      clearArrows();
+
       const base = window.location.origin + "/api";
       const fen = game.fen();
       const depth = document.getElementById("depth").value;
 
-      // Update depth
       await fetch(`${base}/depth?depth=${depth}`, { method: "POST" });
 
-      // Get evaluation
       const evalRes = await fetch(`${base}/evaluate?fen=${encodeURIComponent(fen)}`);
       const evalData = await evalRes.json();
       document.getElementById("evaluation").textContent =
         evalData.type === "cp" ? evalData.value + " cp" : "Mate in " + evalData.value;
 
-      // Get evaluation info (raw text → parsed table)
       const infoRes = await fetch(`${base}/evaluation-info?fen=${encodeURIComponent(fen)}`);
       const infoText = await infoRes.text();
       renderInfo(infoText);
 
-      // Get top moves
       const topRes = await fetch(`${base}/top-moves?fen=${encodeURIComponent(fen)}&n=5`);
       const topData = await topRes.json();
       document.getElementById("topMoves").innerHTML =
         topData.map(m => `<li>${m.Move} (${m.Centipawn} cp)</li>`).join("");
+
+      // 🎯 Draw top move arrows
+      const colors = ["#d22", "#e85", "#fb3", "#6c3", "#38c"];
+      topData.slice(0, 5).forEach((m, i) => {
+        const move = m.Move || "";
+        if (move.length >= 4)
+          drawArrow(move.slice(0,2), move.slice(2,4), colors[i] || "#d22");
+      });
     }
 
-    // --- Evaluation info parser ---
     function renderInfo(raw) {
       const container = document.getElementById("infoContainer");
       container.innerHTML = "";
