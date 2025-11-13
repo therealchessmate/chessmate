@@ -1,21 +1,29 @@
-from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from src.engines.stockfish import Stockfish
+from contextlib import asynccontextmanager
 from src.api.evaluate import router as evaluate_router
+from src.engines.stockfish import Stockfish
+from fastapi.staticfiles import StaticFiles
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # --- Startup ---
-    print("Initializing Stockfish engine...")
-    app.state.stockfish = Stockfish(path="./stockfish_bin/patched_stockfish", depth=15)
-    
-    yield  # ⬅️ The app runs while paused here.
-    
-    # --- Shutdown ---
+    print("Starting Stockfish engine...")
+    app.state.stockfish = Stockfish(
+        path="/app/stockfish_bin/patched_stockfish",  # inside container
+        depth=15
+    )
+    yield
     print("Shutting down Stockfish engine...")
-    app.state.stockfish.__del__()
+    try:
+        app.state.stockfish.__del__()
+    except Exception:
+        pass
 
 
 app = FastAPI(lifespan=lifespan)
+
+# Include API routes
 app.include_router(evaluate_router)
+
+# Serve frontend (static HTML)
+app.mount("/", StaticFiles(directory="src/static", html=True), name="static")

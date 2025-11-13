@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chessmate Test UI</title>
+    <style>
+        body { font-family: sans-serif; max-width: 700px; margin: 40px auto; }
+        h1 { font-size: 1.4em; }
+        label { display: block; margin-top: 1em; }
+        textarea, input { width: 100%; padding: 6px; }
+        button { margin-top: 1em; padding: 8px 12px; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1em; }
+        th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+        .result { margin-top: 1.5em; }
+    </style>
+</head>
+<body>
+    <h1>Chessmate Analysis UI</h1>
+
+    <label>FEN:</label>
+    <textarea id="fen" rows="2">rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1</textarea>
+
+    <label>Depth:</label>
+    <input id="depth" type="number" value="15" min="1" max="40">
+
+    <button onclick="analyze()">Analyze</button>
+
+    <div class="result">
+        <h3>Evaluation:</h3>
+        <pre id="evaluation">-</pre>
+
+        <h3>Evaluation Info:</h3>
+        <table id="infoTable"></table>
+
+        <h3>Top 5 Moves:</h3>
+        <ul id="topMoves"></ul>
+    </div>
+
+    <script>
+        async function analyze() {
+            const base = window.location.origin + "/api";
+            const fen = encodeURIComponent(document.getElementById("fen").value.trim());
+            const depth = document.getElementById("depth").value;
+
+            // Update depth
+            await fetch(`${base}/depth?depth=${depth}`, { method: "POST" });
+
+            // Get evaluation
+            const evalRes = await fetch(`${base}/evaluate?fen=${fen}`);
+            const evalData = await evalRes.json();
+            document.getElementById("evaluation").textContent =
+                `${evalData.type === "cp" ? evalData.value + " cp" : "Mate in " + evalData.value}`;
+
+            // Get evaluation info
+            const infoRes = await fetch(`${base}/evaluation-info?fen=${fen}`);
+            const infoData = await infoRes.json();
+            renderInfoTable(infoData);
+
+            // Get top moves
+            const topRes = await fetch(`${base}/top-moves?fen=${fen}&n=5`);
+            const topData = await topRes.json();
+            const list = document.getElementById("topMoves");
+            list.innerHTML = topData.map(m => `<li>${m.Move} (${m.Centipawn} cp)</li>`).join("");
+        }
+
+        function renderInfoTable(data) {
+            const table = document.getElementById("infoTable");
+            table.innerHTML = "";
+            for (const [key, value] of Object.entries(data)) {
+                const row = document.createElement("tr");
+                row.innerHTML = `<th>${key}</th><td>${value}</td>`;
+                table.appendChild(row);
+            }
+        }
+    </script>
+</body>
+</html>
