@@ -1,24 +1,99 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Local Board Test</title>
-  <link rel="stylesheet" href="/static/lib/chessboard-1.0.0.min.css" />
+  <meta charset="UTF-8">
+  <title>Chessmate Analysis UI</title>
+  <style>
+    body { font-family: sans-serif; max-width: 900px; margin: 40px auto; }
+    h1 { font-size: 1.4em; margin-bottom: .5em; }
+    label { display: block; margin-top: 1em; }
+    textarea, input { width: 100%; padding: 6px; font-family: monospace; }
+    button { margin-top: 1em; padding: 8px 12px; cursor: pointer; }
+    pre, table { background: #f6f6f6; padding: 8px; border-radius: 6px; }
+    table { width: 100%; border-collapse: collapse; font-family: monospace; }
+    th, td { border: 1px solid #ddd; padding: 4px 6px; text-align: right; }
+    th:first-child, td:first-child { text-align: left; }
+    ul { margin-top: .5em; }
+  </style>
 </head>
 <body>
-  <h1>Local chessboard.js test</h1>
-  <div id="board" style="width:400px"></div>
+  <h1>Chessmate Analysis UI</h1>
 
-  <script src="/static/lib/chessboard-1.0.0.min.js"></script>
-  <script src="/static/lib/chess.min.js"></script>
+  <label>FEN:</label>
+  <textarea id="fen" rows="2">rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1</textarea>
+
+  <label>Depth:</label>
+  <input id="depth" type="number" value="15" min="1" max="40">
+
+  <button onclick="analyze()">Analyze</button>
+
+  <div class="result">
+    <h3>Evaluation:</h3>
+    <pre id="evaluation">-</pre>
+
+    <h3>Evaluation Info:</h3>
+    <div id="infoContainer">-</div>
+
+    <h3>Top 5 Moves:</h3>
+    <ul id="topMoves"></ul>
+  </div>
 
   <script>
-    console.log("Chessboard:", typeof Chessboard);
-    console.log("Chess:", typeof Chess);
-    if (typeof Chessboard !== "undefined") {
-      Chessboard("board", { position: "start" });
-    } else {
-      document.body.innerHTML += "<p style='color:red'>Failed to load local JS.</p>";
+    async function analyze() {
+      const base = window.location.origin + "/api";
+      const fen = document.getElementById("fen").value.trim();
+      const depth = document.getElementById("depth").value;
+
+      try {
+        // update depth once
+        await fetch(`${base}/depth?depth=${depth}`, { method: "POST" });
+
+        // evaluation
+        const evalRes = await fetch(`${base}/evaluate?fen=${encodeURIComponent(fen)}`);
+        const evalData = await evalRes.json();
+        document.getElementById("evaluation").textContent =
+          evalData.type === "cp" ? `${evalData.value} cp` : `Mate in ${evalData.value}`;
+
+        // evaluation info
+        const infoRes = await fetch(`${base}/evaluation-info?fen=${encodeURIComponent(fen)}`);
+        const infoText = await infoRes.text();
+        renderInfo(infoText);
+
+        // top moves
+        const topRes = await fetch(`${base}/top-moves?fen=${encodeURIComponent(fen)}&n=5`);
+        const topData = await topRes.json();
+        document.getElementById("topMoves").innerHTML =
+          topData.map(m => `<li>${m.Move} (${m.Centipawn} cp)</li>`).join("");
+      } catch (err) {
+        alert("Error fetching analysis:\n" + err);
+      }
+    }
+
+    function renderInfo(raw) {
+      const container = document.getElementById("infoContainer");
+      container.innerHTML = "";
+      const lines = raw.split("\n").filter(l => /^[A-Z]/i.test(l) && l.includes("|"));
+      if (!lines.length) { container.textContent = raw; return; }
+
+      const table = document.createElement("table");
+      table.innerHTML = `<tr>
+        <th>Term</th><th>White MG</th><th>White EG</th>
+        <th>Black MG</th><th>Black EG</th><th>Total MG</th><th>Total EG</th>
+      </tr>`;
+
+      for (const line of lines) {
+        const cols = line.split("|").map(c => c.trim()).filter(Boolean);
+        if (cols.length >= 4) {
+          const [term, white, black, total] = cols;
+          const w = white.split(" "), b = black.split(" "), t = total.split(" ");
+          table.innerHTML += `<tr>
+            <td>${term}</td><td>${w[0]||""}</td><td>${w[1]||""}</td>
+            <td>${b[0]||""}</td><td>${b[1]||""}</td>
+            <td>${t[0]||""}</td><td>${t[1]||""}</td>
+          </tr>`;
+        }
+      }
+      container.appendChild(table);
     }
   </script>
 </body>
