@@ -34,9 +34,29 @@
     <h3>Evaluation Info:</h3>
     <div id="infoContainer">-</div>
 
+    <p style="font-size:0.9em; margin-top:0.5em;">
+      <b>Column meaning:</b><br>
+      • <b>Term</b> – individual evaluation component.<br>
+      • <b>White MG / EG</b> – mid-game and end-game score for White.<br>
+      • <b>Black MG / EG</b> – mid-game and end-game score for Black.<br>
+      • <b>Total MG / EG</b> – combined differential (White − Black).<br>
+      Positive values favour White; negative favour Black.
+    </p>
+
     <h3>Top 5 Moves:</h3>
     <ul id="topMoves"></ul>
   </div>
+
+  <h4>Legend of Evaluation Terms</h4>
+  <ul>
+    <li><b>Material</b> – raw piece balance.</li>
+    <li><b>Imbalance</b> – structural difference in piece composition (e.g. 2 knights vs bishop + pawn).</li>
+    <li><b>Pawns – Queens</b> – piece-specific activity and coordination for each type.</li>
+    <li><b>Mobility</b> – number and quality of legal moves available.</li>
+    <li><b>King safety</b> – exposure of the king to attack and shielded squares.</li>
+    <li><b>Threats</b> – direct and potential attacks on opponent’s pieces.</li>
+    <li><b>Passed / Space / Winnable</b> – positional and end-game control factors.</li>
+  </ul>
 
   <script>
     async function analyze() {
@@ -45,21 +65,17 @@
       const depth = document.getElementById("depth").value;
 
       try {
-        // update depth once
         await fetch(`${base}/depth?depth=${depth}`, { method: "POST" });
 
-        // evaluation
         const evalRes = await fetch(`${base}/evaluate?fen=${encodeURIComponent(fen)}`);
         const evalData = await evalRes.json();
         document.getElementById("evaluation").textContent =
           evalData.type === "cp" ? `${evalData.value} cp` : `Mate in ${evalData.value}`;
 
-        // evaluation info
         const infoRes = await fetch(`${base}/evaluation-info?fen=${encodeURIComponent(fen)}`);
         const infoText = await infoRes.text();
         renderInfo(infoText);
 
-        // top moves
         const topRes = await fetch(`${base}/top-moves?fen=${encodeURIComponent(fen)}&n=5`);
         const topData = await topRes.json();
         document.getElementById("topMoves").innerHTML =
